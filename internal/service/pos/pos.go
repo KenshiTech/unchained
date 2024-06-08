@@ -2,10 +2,10 @@ package pos
 
 import (
 	"context"
+	"encoding/hex"
 	"math/big"
 
 	"github.com/TimeleapLabs/unchained/internal/config"
-	"github.com/TimeleapLabs/unchained/internal/crypto"
 	"github.com/TimeleapLabs/unchained/internal/crypto/ethereum"
 	"github.com/TimeleapLabs/unchained/internal/crypto/ethereum/contracts"
 	"github.com/TimeleapLabs/unchained/internal/service/pos/eip712"
@@ -110,14 +110,10 @@ func New(ethRPC ethereum.RPC) Service {
 		lastUpdated:  xsync.NewMapOf[[20]byte, *big.Int](),
 	}
 
-	pkBytes := crypto.Identity.Bls.PublicKey.Bytes()
-	addrHexStr, addrHex := address.CalculateHex(pkBytes[:])
-
-	utils.Logger.
-		With("Address", addrHexStr).
-		Info("PoS identity initialized")
-
-	var err error
+	blsPublicKey, err := hex.DecodeString(config.App.Secret.PublicKey)
+	if err != nil {
+		panic(err)
+	}
 
 	s.posContract, err = s.ethRPC.GetNewStakingContract(
 		config.App.ProofOfStake.Chain,
@@ -132,7 +128,7 @@ func New(ethRPC ethereum.RPC) Service {
 		panic(err)
 	}
 
-	power, err := s.GetVotingPower(addrHex, big.NewInt(0))
+	power, err := s.GetVotingPower([20]byte(blsPublicKey), big.NewInt(0))
 	if err != nil {
 		utils.Logger.
 			With("Error", err).

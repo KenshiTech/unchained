@@ -3,12 +3,10 @@ package handler
 import (
 	"context"
 
-	"github.com/TimeleapLabs/unchained/internal/crypto/bls"
 	"github.com/TimeleapLabs/unchained/internal/model"
-	"github.com/TimeleapLabs/unchained/internal/utils"
 )
 
-func (h *consumer) PriceReport(ctx context.Context, message []byte) {
+func (h *postgresConsumer) PriceReport(ctx context.Context, message []byte) {
 	packet := new(model.BroadcastPricePacket).FromBytes(message)
 
 	priceInfoHash, err := packet.Info.Bls()
@@ -16,18 +14,9 @@ func (h *consumer) PriceReport(ctx context.Context, message []byte) {
 		return
 	}
 
-	signature, err := bls.RecoverSignature(packet.Signature)
-	if err != nil {
-		utils.Logger.
-			With("Error", err).
-			Error("Failed to recover packet signature")
-
-		return
-	}
-
 	err = h.uniswap.RecordSignature(
 		ctx,
-		signature,
+		packet.Signature[:],
 		packet.Signer,
 		priceInfoHash,
 		packet.Info,
@@ -38,5 +27,7 @@ func (h *consumer) PriceReport(ctx context.Context, message []byte) {
 		return
 	}
 }
+
+func (h *schnorrConsumer) PriceReport(_ context.Context, _ []byte) {}
 
 func (w worker) PriceReport(_ context.Context, _ []byte) {}

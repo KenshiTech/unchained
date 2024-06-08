@@ -3,12 +3,10 @@ package handler
 import (
 	"context"
 
-	"github.com/TimeleapLabs/unchained/internal/crypto/bls"
 	"github.com/TimeleapLabs/unchained/internal/model"
-	"github.com/TimeleapLabs/unchained/internal/utils"
 )
 
-func (h *consumer) CorrectnessReport(ctx context.Context, message []byte) {
+func (h *postgresConsumer) CorrectnessReport(ctx context.Context, message []byte) {
 	packet := new(model.BroadcastCorrectnessPacket).FromBytes(message)
 
 	correctnessHash, err := packet.Info.Bls()
@@ -16,18 +14,9 @@ func (h *consumer) CorrectnessReport(ctx context.Context, message []byte) {
 		return
 	}
 
-	signature, err := bls.RecoverSignature(packet.Signature)
-	if err != nil {
-		utils.Logger.
-			With("Error", err).
-			Error("Failed to recover packet signature")
-
-		return
-	}
-
 	err = h.correctness.RecordSignature(
 		ctx,
-		signature,
+		packet.Signature[:],
 		packet.Signer,
 		correctnessHash,
 		packet.Info,
@@ -37,5 +26,7 @@ func (h *consumer) CorrectnessReport(ctx context.Context, message []byte) {
 		return
 	}
 }
+
+func (h *schnorrConsumer) CorrectnessReport(_ context.Context, _ []byte) {}
 
 func (w worker) CorrectnessReport(_ context.Context, _ []byte) {}
